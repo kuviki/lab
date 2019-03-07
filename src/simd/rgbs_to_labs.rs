@@ -1,6 +1,7 @@
 use super::{Lab, EPSILON, KAPPA};
 use std::arch::x86_64::*;
 use std::{iter, mem};
+use super::math::power_ps;
 
 static BLANK_RGB: [u8; 3] = [0u8; 3];
 
@@ -171,12 +172,7 @@ unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
         const A: f32 = 0.055 * 255.0;
         const D: f32 = 1.055 * 255.0;
         let t0 = _mm256_div_ps(_mm256_add_ps(c, _mm256_set1_ps(A)), _mm256_set1_ps(D));
-
-        let mut unpacked: [f32; 8] = mem::transmute(t0);
-        for el in unpacked.iter_mut() {
-            *el = el.powf(2.4);
-        }
-        mem::transmute(unpacked)
+        power_ps(t0, _mm256_set1_ps(2.4))
     };
 
     let false_branch = {
@@ -204,7 +200,6 @@ unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 #[inline]
 unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
     let mask = _mm256_cmp_ps(c, _mm256_set1_ps(EPSILON), _CMP_GT_OQ);
-    // do false branch first
     let false_branch = _mm256_div_ps(
         _mm256_add_ps(
             _mm256_mul_ps(c, _mm256_set1_ps(KAPPA)),
@@ -212,17 +207,7 @@ unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
         ),
         _mm256_set1_ps(116.0),
     );
-    let true_branch = {
-        let mut unpacked: [f32; 8] = mem::transmute(c);
-        let unpacked_mask: [f32; 8] = mem::transmute(mask);
-        for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
-            if test.is_nan() {
-                // NaN == true, 0.0 == false
-                *el = el.powf(1.0 / 3.0)
-            }
-        }
-        mem::transmute(unpacked)
-    };
+    let true_branch = power_ps(c, _mm256_set1_ps(1.0 / 3.0));
     _mm256_blendv_ps(false_branch, true_branch, mask)
 }
 
