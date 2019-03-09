@@ -1,7 +1,7 @@
 use super::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
 use std::arch::x86_64::*;
 use std::{f32, iter, mem};
-use super::math::power_ps;
+// use super::math::power_ps;
 
 static BLANK_LAB: Lab = Lab {
     l: f32::NAN,
@@ -228,17 +228,17 @@ unsafe fn xyzs_to_rgbs_map(c: __m256) -> __m256 {
         // because the conditional is true so infrequently. Still worth it to
         // use the SIMD impl?
 
-        // let mut unpacked: [f32; 8] = mem::transmute(c);
-        // let unpacked_mask: [f32; 8] = mem::transmute(mask);
-        // for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
-        //     if test.is_nan() {
-        //         // NaN == true, 0.0 == false
-        //         *el = el.powf(1.0 / 2.4);
-        //     }
-        // }
-        // let raised: __m256 = mem::transmute(unpacked);
+        let mut unpacked: [f32; 8] = mem::transmute(c);
+        let unpacked_mask: [f32; 8] = mem::transmute(mask);
+        for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
+            if test.is_nan() {
+                // NaN == true, 0.0 == false
+                *el = el.powf(1.0 / 2.4);
+            }
+        }
+        let raised: __m256 = mem::transmute(unpacked);
 
-        let raised = power_ps(c, _mm256_set1_ps(1.0 / 2.4));
+        // let raised = power_ps(c, _mm256_set1_ps(1.0 / 2.4));
         let temp2 = _mm256_mul_ps(raised, _mm256_set1_ps(1.055));
         _mm256_sub_ps(temp2, _mm256_set1_ps(0.055))
     };

@@ -1,7 +1,7 @@
 use super::{Lab, EPSILON, KAPPA};
 use std::arch::x86_64::*;
 use std::{iter, mem};
-use super::math::power_ps;
+use super::math::power;
 
 static BLANK_RGB: [u8; 3] = [0u8; 3];
 
@@ -172,7 +172,7 @@ unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
         const A: f32 = 0.055 * 255.0;
         const D: f32 = 1.055 * 255.0;
         let t0 = _mm256_div_ps(_mm256_add_ps(c, _mm256_set1_ps(A)), _mm256_set1_ps(D));
-        power_ps(t0, _mm256_set1_ps(2.4))
+        power(t0, _mm256_set1_ps(2.4))
     };
 
     let false_branch = {
@@ -207,7 +207,7 @@ unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
         ),
         _mm256_set1_ps(116.0),
     );
-    let true_branch = power_ps(c, _mm256_set1_ps(1.0 / 3.0));
+    let true_branch = power(c, _mm256_set1_ps(1.0 / 3.0));
     _mm256_blendv_ps(false_branch, true_branch, mask)
 }
 
