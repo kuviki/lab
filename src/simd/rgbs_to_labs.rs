@@ -135,7 +135,7 @@ unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
     (r, g, b)
 }
 
-unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
+pub(super) unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
     let r = rgbs_to_xyzs_map(r);
     let g = rgbs_to_xyzs_map(g);
     let b = rgbs_to_xyzs_map(b);
@@ -186,7 +186,7 @@ unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
     _mm256_blendv_ps(false_branch, true_branch, mask)
 }
 
-unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
+pub(super) unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
     let x = xyzs_to_labs_map(_mm256_div_ps(x, _mm256_set1_ps(0.95047)));
     let y = xyzs_to_labs_map(y);
     let z = xyzs_to_labs_map(_mm256_div_ps(z, _mm256_set1_ps(1.08883)));
@@ -226,7 +226,7 @@ unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
     _mm256_blendv_ps(false_branch, true_branch, mask)
 }
 
-unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
+pub(super) unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
     let l: [f32; 8] = mem::transmute(l);
     let a: [f32; 8] = mem::transmute(a);
     let b: [f32; 8] = mem::transmute(b);

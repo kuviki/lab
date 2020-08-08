@@ -78,6 +78,18 @@ fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
     ]
 }
 
+fn bgr_to_xyz(bgr: &[u8; 3]) -> [f32; 3] {
+    let b = rgb_to_xyz_map(bgr[0]);
+    let g = rgb_to_xyz_map(bgr[1]);
+    let r = rgb_to_xyz_map(bgr[2]);
+
+    [
+        r * 0.4124564390896921 + g * 0.357576077643909 + b * 0.18043748326639894,
+        r * 0.21267285140562248 + g * 0.715152155287818 + b * 0.07217499330655958,
+        r * 0.019333895582329317 + g * 0.119192025881303 + b * 0.9503040785363677,
+    ]
+}
+
 #[inline]
 fn rgb_to_xyz_map(c: u8) -> f32 {
     if c > 10 {
@@ -146,6 +158,18 @@ fn xyz_to_rgb(xyz: [f32; 3]) -> [u8; 3] {
     [xyz_to_rgb_map(r), xyz_to_rgb_map(g), xyz_to_rgb_map(b)]
 }
 
+fn xyz_to_bgr(xyz: [f32; 3]) -> [u8; 3] {
+    let x = xyz[0];
+    let y = xyz[1];
+    let z = xyz[2];
+
+    let r = x * 3.2404541621141054 - y * 1.5371385127977166 - z * 0.4985314095560162;
+    let g = x * -0.9692660305051868 + y * 1.8760108454466942 + z * 0.04155601753034984;
+    let b = x * 0.05564343095911469 - y * 0.20402591351675387 + z * 1.0572251882231791;
+
+    [xyz_to_rgb_map(b), xyz_to_rgb_map(g), xyz_to_rgb_map(r)]
+}
+
 #[inline]
 fn xyz_to_rgb_map(c: f32) -> u8 {
     ((if c > 0.0031308 {
@@ -177,6 +201,25 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     rgbs.iter().map(Lab::from_rgb).collect()
 }
 
+/// Convenience function to map a slice of BGR values to Lab values in serial
+///
+/// # Example
+/// ```
+/// # extern crate lab;
+/// # use lab::{Lab, bgrs_to_labs};
+/// let bgrs = &[[127u8, 127, 0], [127, 0, 127], [0, 0, 255]];
+/// let labs = lab::bgrs_to_labs(bgrs);
+/// assert_eq!(labs, vec![
+///     Lab { l: 47.8919, a: -28.683678, b: -8.42911 },
+///     Lab { l: 29.52658, a: 58.595745, b: -36.281406 },
+///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 }
+/// ]);
+/// ```
+#[inline]
+pub fn bgrs_to_labs(bgrs: &[[u8; 3]]) -> Vec<Lab> {
+    bgrs.iter().map(Lab::from_bgr).collect()
+}
+
 /// Convenience function to map a slice of Lab values to RGB values in serial
 ///
 /// # Example
@@ -194,6 +237,25 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
 #[inline]
 pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     labs.iter().map(Lab::to_rgb).collect()
+}
+
+/// Convenience function to map a slice of Lab values to BGR values in serial
+///
+/// # Example
+/// ```
+/// # extern crate lab;
+/// # use lab::{Lab, labs_to_bgrs};
+/// let labs = &[
+///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
+/// ];
+/// let bgrs = lab::labs_to_bgrs(labs);
+/// assert_eq!(bgrs, vec![[255u8, 255, 0], [255, 0, 255], [0, 255, 255]]);
+/// ```
+#[inline]
+pub fn labs_to_bgrs(labs: &[Lab]) -> Vec<[u8; 3]> {
+    labs.iter().map(Lab::to_bgr).collect()
 }
 
 impl Lab {
@@ -229,6 +291,18 @@ impl Lab {
         xyz_to_lab(rgb_to_xyz(rgb))
     }
 
+    /// Constructs a new `Lab` from a three-element array of `u8`s
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lab = lab::Lab::from_bgr(&[95, 33, 240]);
+    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
+    /// ```
+    pub fn from_bgr(bgr: &[u8; 3]) -> Self {
+        xyz_to_lab(bgr_to_xyz(bgr))
+    }
+
     /// Constructs a new `Lab` from a four-element array of `u8`s
     ///
     /// The `Lab` struct does not store alpha channel information, so the last
@@ -245,6 +319,22 @@ impl Lab {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
     }
 
+    /// Constructs a new `Lab` from a four-element array of `u8`s
+    ///
+    /// The `Lab` struct does not store alpha channel information, so the last
+    /// `u8` representing alpha is discarded. This convenience method exists
+    /// in order to easily measure colors already stored in an BGRA array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lab = lab::Lab::from_bgra(&[95, 33, 240, 255]);
+    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
+    /// ```
+    pub fn from_bgra(bgra: &[u8; 4]) -> Self {
+        Lab::from_bgr(&[bgra[0], bgra[1], bgra[2]])
+    }
+
     /// Returns the `Lab`'s color in RGB, in a 3-element array.
     ///
     /// # Examples
@@ -256,6 +346,19 @@ impl Lab {
     /// ```
     pub fn to_rgb(&self) -> [u8; 3] {
         xyz_to_rgb(lab_to_xyz(&self))
+    }
+
+    /// Returns the `Lab`'s color in BGR, in a 3-element array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lab = lab::Lab { l: 52.330193, a: 75.56704, b: 19.989174 };
+    /// let bgr = lab.to_bgr();
+    /// assert_eq!([95, 33, 240], bgr);
+    /// ```
+    pub fn to_bgr(&self) -> [u8; 3] {
+        xyz_to_bgr(lab_to_xyz(&self))
     }
 
     /// Measures the perceptual distance between the colors of one `Lab`
@@ -276,8 +379,7 @@ impl Lab {
 
 #[cfg(test)]
 mod tests {
-    use super::{labs_to_rgbs, rgbs_to_labs, Lab};
-    use rand;
+    use super::{bgrs_to_labs, labs_to_bgrs, labs_to_rgbs, rgbs_to_labs, Lab};
     use rand::distributions::Standard;
     use rand::Rng;
 
@@ -322,9 +424,27 @@ mod tests {
     }
 
     #[test]
+    fn test_from_bgr() {
+        for test in COLOURS.iter() {
+            assert_eq!(test.1, Lab::from_bgr(&[test.0[2], test.0[1], test.0[0]]));
+            assert_eq!(
+                test.1,
+                Lab::from_bgra(&[test.0[2], test.0[1], test.0[0], 255])
+            );
+        }
+    }
+
+    #[test]
     fn test_to_rgb() {
         for test in COLOURS.iter() {
             assert_eq!(test.0, test.1.to_rgb());
+        }
+    }
+
+    #[test]
+    fn test_to_bgr() {
+        for test in COLOURS.iter() {
+            assert_eq!([test.0[2], test.0[1], test.0[0]], test.1.to_bgr());
         }
     }
 
@@ -350,15 +470,25 @@ mod tests {
         assert_sync::<Lab>();
     }
 
-    #[test]
-    fn test_rgb_to_lab_to_rgb() {
-        let rgbs: Vec<[u8; 3]> = {
+    lazy_static! {
+        static ref RANDOM_COLOURS: Vec<[u8; 3]> = {
             let rand_seed = [1u8; 32];
             let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
             rng.sample_iter(&Standard).take(2048).collect()
         };
-        let labs = rgbs_to_labs(&rgbs);
+    }
+
+    #[test]
+    fn test_rgb_to_lab_to_rgb() {
+        let labs = rgbs_to_labs(&RANDOM_COLOURS);
         let rgbs2 = labs_to_rgbs(&labs);
-        assert_eq!(rgbs2, rgbs);
+        assert_eq!(rgbs2, *RANDOM_COLOURS);
+    }
+
+    #[test]
+    fn test_bgr_to_lab_to_bgr() {
+        let labs = bgrs_to_labs(&RANDOM_COLOURS);
+        let bgrs2 = labs_to_bgrs(&labs);
+        assert_eq!(bgrs2, *RANDOM_COLOURS);
     }
 }

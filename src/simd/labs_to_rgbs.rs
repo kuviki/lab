@@ -110,7 +110,7 @@ unsafe fn slice_labs_to_slice_rgbs(labs: &[Lab]) -> [[u8; 3]; 8] {
 }
 
 #[inline]
-unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
+pub(super) unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
     let labs = &labs[..8];
     let l = _mm256_set_ps(
         labs[0].l, labs[1].l, labs[2].l, labs[3].l, labs[4].l, labs[5].l, labs[6].l, labs[7].l,
@@ -125,7 +125,7 @@ unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
 }
 
 #[inline]
-unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m256) {
+pub(super) unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m256) {
     let fy = _mm256_div_ps(
         _mm256_add_ps(l, _mm256_set1_ps(16.0)),
         _mm256_set1_ps(116.0),
@@ -192,7 +192,7 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
 }
 
 #[inline]
-unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
+pub(super) unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
     let r = {
         let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(3.2404541621141054));
         let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-1.5371385127977166));
